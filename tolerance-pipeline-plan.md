@@ -16,15 +16,15 @@
 
 ## Milestone T0 — Baseline + Failure Taxonomy
 ### Tasks
-- [ ] Define explicit failure categories for ask pipeline:
-  - [ ] `json_parse_failed`
-  - [ ] `schema_failed`
-  - [ ] `patch_contract_failed` (header/fence/prose)
-  - [ ] `diff_parse_failed` (line prefix, malformed file sections)
-  - [ ] `diff_validation_failed` (hunk counts, policy limits)
-  - [ ] `llm_timeout_or_http_error`
-- [ ] Add structured error metadata to command/session output.
-- [ ] Add a simple local report script for failure frequencies from `.agent/sessions/*.jsonl`.
+- [x] Define explicit failure categories for ask pipeline:
+  - [x] `json_parse_failed`
+  - [x] `schema_failed`
+  - [x] `patch_contract_failed` (header/fence/prose)
+  - [x] `diff_parse_failed` (line prefix, malformed file sections)
+  - [x] `diff_validation_failed` (hunk counts, policy limits)
+  - [x] `llm_timeout_or_http_error`
+- [x] Add structured error metadata to command/session output.
+- [x] Add a simple local report script for failure frequencies from `.agent/sessions/*.jsonl`.
 
 ### Benchmarks / Tests
 - **Unit:** category mapper maps known error strings to expected category.
@@ -35,14 +35,14 @@
 
 ## Milestone T1 — Configurable Inference Reliability
 ### Tasks
-- [ ] Extend model config schema with:
-  - [ ] `timeoutMs`
-  - [ ] `maxRetries`
-- [ ] Propagate config through CLI model loader → Ollama adapter constructor.
-- [ ] Keep safe defaults and backward compatibility for existing `model.json`.
-- [ ] Update `agent doctor` to warn on risky config combinations:
-  - [ ] large model + too-short timeout
-  - [ ] excessively high context on low-memory systems (best-effort warning)
+- [x] Extend model config schema with:
+  - [x] `timeoutMs`
+  - [x] `maxRetries`
+- [x] Propagate config through CLI model loader → Ollama adapter constructor.
+- [x] Keep safe defaults and backward compatibility for existing `model.json`.
+- [x] Update `agent doctor` to warn on risky config combinations:
+  - [x] large model + too-short timeout
+  - [x] excessively high context on low-memory systems (best-effort warning)
 
 ### Benchmarks / Tests
 - **Unit:** model config normalization accepts/validates new fields.
@@ -54,12 +54,12 @@
 
 ## Milestone T2 — JSON Envelope Normalization (Pre-Parse)
 ### Tasks
-- [ ] Add pre-parser normalizer for raw model output:
-  - [ ] trim BOM / whitespace wrappers
-  - [ ] remove outer markdown fences robustly
-  - [ ] extract first balanced JSON object when prose wraps output
-- [ ] Preserve original raw response for diagnostics.
-- [ ] Parse normalized output with existing strict schema validator.
+- [x] Add pre-parser normalizer for raw model output:
+  - [x] trim BOM / whitespace wrappers
+  - [x] remove outer markdown fences robustly
+  - [x] extract first balanced JSON object when prose wraps output
+- [x] Preserve original raw response for diagnostics.
+- [x] Parse normalized output with existing strict schema validator.
 
 ### Benchmarks / Tests
 - **Unit:** accepts wrapped JSON with leading/trailing prose.
@@ -166,6 +166,10 @@
 - [ ] Existing policy and patch validation guarantees remain intact.
 - [ ] CLI provides clear, actionable failure categories.
 - [ ] Benchmarks show measurable reliability gain on local small-model profiles.
+
+## Interactive action protocol status
+
+The chat runtime now has its own completed bounded recovery layer. It normalizes only registered direct-tool forms, validates exact tool argument schemas before dispatch, requests Ollama JSON Schema output through `LLMOptions`, retries malformed actions a configurable finite number of times, records typed normalization/repair/stop events without persisting raw model output, and issues one alternative-strategy nudge for repeated failures. This does not mark the remaining one-shot `AgentRunner` patch sanitation/diff-repair work in T3–T6 complete.
 
 ---
 

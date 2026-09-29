@@ -159,6 +159,7 @@ describe('CLI commands', () => {
     expect(program.commands.map((command) => command.name())).toEqual([
       'init',
       'ask',
+      'chat',
       'apply',
       'test',
       'undo',
@@ -210,6 +211,7 @@ describe('CLI commands', () => {
         init [options]              Initialize agent configuration in current
                                     repository
         ask [options] <task>        Ask the agent to perform a coding task
+        chat [options]              Start a persistent interactive coding session
         apply [options]             Apply the last proposed patch
         test [options]              Run allowlisted test commands
         undo [options]              Rollback the last applied patch
@@ -241,8 +243,12 @@ describe('CLI commands', () => {
       Model file: present
       Sessions dir: present
       Patches dir: present
+      Transactions dir: present
       Pending patch: none
       Last applied patch: none
+      Last transaction: none
+      Transaction status: n/a
+      Transaction files: none
       Last session: SESSION_ID
       Last command: init
       Last result: completed
@@ -670,10 +676,11 @@ describe('CLI commands', () => {
     expect(runtime.exitCode).toBe(1);
 
     const parsed = JSON.parse(runtime.stdout.join('\n')) as {
-      data: { failure: { category: string; classifierVersion: string } };
+      data: { failure: { category: string; classifierVersion: string }; rawModelOutput: string };
     };
     expect(parsed.data.failure.category).toBe('patch_contract_failed');
     expect(parsed.data.failure.classifierVersion).toBe('t0');
+    expect(parsed.data.rawModelOutput).toContain('PATCH START');
   });
 
   it('writes a session log for successful commands and replays it in order', async () => {

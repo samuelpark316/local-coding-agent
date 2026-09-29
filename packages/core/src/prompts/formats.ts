@@ -19,8 +19,27 @@ export interface AgentOutput {
   tool_calls: ToolCall[];
 }
 
+export function normalizeAgentOutputEnvelope(text: string): string {
+  const withoutBom = text.replace(/^\uFEFF/u, '').trim();
+  if (withoutBom.length === 0) {
+    return withoutBom;
+  }
+
+  const unfenced = stripCodeFence(withoutBom).trim();
+  if (looksLikeJsonObject(unfenced)) {
+    return unfenced;
+  }
+
+  const extractedJson = extractFirstJsonObject(unfenced);
+  if (extractedJson) {
+    return extractedJson.trim();
+  }
+
+  return unfenced;
+}
+
 export function parseAgentOutput(text: string): AgentOutput {
-  const normalized = stripCodeFence(text.trim());
+  const normalized = normalizeAgentOutputEnvelope(text);
   let parsed: unknown;
 
   try {
@@ -123,9 +142,76 @@ export function validatePatchOutputContract(patch: string | null): void {
 }
 
 function stripCodeFence(input: string): string {
-  if (!input.startsWith('```')) {
+  const match = /^```(?:[a-z0-9_-]+)?\s*([\s\S]*?)\s*```$/iu.exec(input);
+  if (!match) {
     return input;
   }
 
-  return input.replace(/^```(?:json)?\s*/u, '').replace(/\s*```$/u, '');
+  return match[1] ?? '';
+}
+
+function looksLikeJsonObject(input: string): boolean {
+  return input.startsWith('{') && input.endsWith('}');
+}
+
+function extractFirstJsonObject(input: string): string | null {
+  for (let start = 0; start < input.length; start += 1) {
+    if (input[start] !== '{') {
+      continue;
+    }
+
+    const end = findMatchingJsonObjectEnd(input, start);
+    if (end !== null) {
+      return input.slice(start, end + 1);
+    }
+  }
+
+  return null;
+}
+
+function findMatchingJsonObjectEnd(input: string, startIndex: number): number | null {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = startIndex; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+      continue;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return null;
 }

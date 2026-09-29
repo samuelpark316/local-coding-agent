@@ -7,6 +7,7 @@ import {
   parseUnifiedDiff,
   RunCommandTool,
   rollbackLastPatch,
+  TransactionStore,
   validateDiff,
 } from '@local-agent/core';
 import {
@@ -22,7 +23,7 @@ import {
   writeAgentState,
 } from '../lib/agentFs.js';
 import { CliCommandError } from '../lib/commandHelpers.js';
-import { formatDoctorReport, runDoctorChecks } from '../lib/doctor.js';
+import { type DoctorOptions, formatDoctorReport, runDoctorChecks } from '../lib/doctor.js';
 import { loadModelConfig } from '../lib/model.js';
 import type { CommandResult } from '../lib/output.js';
 import { discoverTestCommand, loadAgentPolicy, requirePolicyApproval } from '../lib/policy.js';
@@ -233,6 +234,7 @@ export async function handleInit(cwd: string): Promise<CommandResult> {
       modelPath: paths.modelPath,
       sessionsDir: paths.sessionsDir,
       patchesDir: paths.patchesDir,
+      transactionsDir: paths.transactionsDir,
     },
     human: [
       `Initialized agent configuration in ${paths.agentDir}`,
@@ -241,6 +243,7 @@ export async function handleInit(cwd: string): Promise<CommandResult> {
       `Model config: ${paths.modelPath}`,
       `Sessions: ${paths.sessionsDir}`,
       `Patches: ${paths.patchesDir}`,
+      `Transactions: ${paths.transactionsDir}`,
     ],
   };
 }
@@ -299,8 +302,14 @@ export async function handleAsk(
       },
     });
   } catch (error) {
+    const rawModelOutput =
+      error && typeof error === 'object' && 'rawModelOutput' in error
+        ? (error.rawModelOutput as string | undefined)
+        : undefined;
     throw new CliCommandError(
-      error instanceof Error ? error.message : 'Ollama request failed unexpectedly.'
+      error instanceof Error ? error.message : 'Ollama request failed unexpectedly.',
+      1,
+      rawModelOutput ? { rawModelOutput } : undefined
     );
   }
 
@@ -664,8 +673,12 @@ export async function handleStatus(runtime: CliRuntime): Promise<CommandResult> 
       `Model file: ${status.modelExists ? 'present' : 'missing'}`,
       `Sessions dir: ${status.sessionsDirExists ? 'present' : 'missing'}`,
       `Patches dir: ${status.patchesDirExists ? 'present' : 'missing'}`,
+      `Transactions dir: ${status.transactionsDirExists ? 'present' : 'missing'}`,
       `Pending patch: ${status.pendingPatch ?? 'none'}`,
       `Last applied patch: ${status.lastAppliedPatch ?? 'none'}`,
+      `Last transaction: ${status.lastTransaction?.id ?? 'none'}`,
+      `Transaction status: ${status.lastTransaction?.status ?? 'n/a'}`,
+      `Transaction files: ${status.lastTransaction?.changedFiles.join(', ') || 'none'}`,
       ...lastSessionLines,
     ],
   };
@@ -754,6 +767,25 @@ export async function handleUndo(cwd: string): Promise<CommandResult> {
     );
   }
 
+  const transactionStore = new TransactionStore(getAgentPaths(repoRoot).transactionsDir, repoRoot);
+  const transaction = await transactionStore.latest();
+  if (transaction && transaction.status !== 'reverted' && transaction.edits.length > 0) {
+    await transactionStore.revert(transaction);
+    return {
+      ok: true,
+      message: `Reverted transaction ${transaction.id}.`,
+      data: {
+        repoRoot,
+        transactionId: transaction.id,
+        filesChanged: transaction.edits.flatMap((edit) => edit.filesChanged),
+      },
+      human: [
+        `Reverted transaction ${transaction.id}.`,
+        `Changed files: ${[...new Set(transaction.edits.flatMap((edit) => edit.filesChanged))].join(', ')}`,
+      ],
+    };
+  }
+
   const record = await readAppliedPatchRecord(repoRoot);
   if (!record) {
     throw new CliCommandError('No applied patch is available to undo.');
@@ -800,8 +832,11 @@ export async function handleReplay(cwd: string, sessionId: string): Promise<Comm
   };
 }
 
-export async function handleDoctor(cwd: string): Promise<CommandResult> {
-  const report = await runDoctorChecks(cwd);
+export async function handleDoctor(
+  cwd: string,
+  options: DoctorOptions = {}
+): Promise<CommandResult> {
+  const report = await runDoctorChecks(cwd, {}, options);
   const lines = formatDoctorReport(report);
   const summary = `Doctor checks ${report.ok ? 'passed' : 'failed'} (${report.passed} passed, ${report.warnings} warnings, ${report.failed} failed).`;
 

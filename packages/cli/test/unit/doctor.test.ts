@@ -100,4 +100,25 @@ describe('doctor diagnostics', () => {
       'warn'
     );
   });
+
+  it('optionally validates a harmless model action without executing a tool', async () => {
+    const report = await runDoctorChecks(
+      '/repo',
+      createDependencies({
+        createAdapter: () => ({
+          checkServer: async () => true,
+          listModels: async () => ['qwen2.5-coder:14b'],
+          complete: async () => ({
+            content:
+              '{"type":"complete","summary":"Protocol check passed","noChangeReason":"Diagnostic only"}',
+            finishReason: 'stop',
+          }),
+        }),
+      }),
+      { protocol: true }
+    );
+    expect(report.checks.find((check) => check.id === 'model_protocol')).toMatchObject({
+      status: 'pass',
+    });
+  });
 });

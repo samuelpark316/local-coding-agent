@@ -3,7 +3,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseAgentOutput, validatePatchOutputContract } from '../../src/prompts/formats';
+import {
+  normalizeAgentOutputEnvelope,
+  parseAgentOutput,
+  validatePatchOutputContract,
+} from '../../src/prompts/formats';
 
 describe('parseAgentOutput', () => {
   it('parses strict JSON output', () => {
@@ -57,6 +61,31 @@ describe('parseAgentOutput', () => {
 \`\`\``);
 
     expect(parsed.done).toBe(true);
+  });
+
+  it('extracts embedded JSON when prose wraps the object', () => {
+    const parsed = parseAgentOutput(
+      [
+        'Here is the structured result:',
+        '{"plan":"p","patch":null,"commands":[],"done":true,"tool_calls":[]}',
+        'Thanks.',
+      ].join('\n')
+    );
+
+    expect(parsed.plan).toBe('p');
+    expect(parsed.done).toBe(true);
+  });
+
+  it('normalizes BOM + fenced wrappers', () => {
+    const normalized = normalizeAgentOutputEnvelope(
+      `\uFEFF\`\`\`JSON\n{"plan":"p","patch":null,"commands":[],"done":true,"tool_calls":[]}\n\`\`\``
+    );
+    expect(normalized.startsWith('{')).toBe(true);
+    expect(normalized.endsWith('}')).toBe(true);
+  });
+
+  it('rejects unrecoverable non-json outputs', () => {
+    expect(() => parseAgentOutput('no structured output here')).toThrow('not valid JSON');
   });
 
   it('rejects prose before unified diff headers in patch output', () => {

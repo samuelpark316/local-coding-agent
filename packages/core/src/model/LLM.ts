@@ -21,4 +21,8 @@ export interface LLMOptions {
   maxTokens?: number;
   contextLimit?: number;
   stop?: string[];
+  structuredOutput?: {
+    schema: Record<string, unknown>;
+    fallbackToPrompt?: boolean;
+  };
 }

@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { createApplyCommand } from './commands/apply.js';
 import { createAskCommand } from './commands/ask.js';
+import { createChatCommand } from './commands/chat.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createInitCommand } from './commands/init.js';
 import { createReplayCommand } from './commands/replay.js';
@@ -16,6 +17,7 @@ export function createProgram(runtime: CliRuntime = createRuntime()): Command {
 
   program.addCommand(createInitCommand(runtime));
   program.addCommand(createAskCommand(runtime));
+  program.addCommand(createChatCommand(runtime));
   program.addCommand(createApplyCommand(runtime));
   program.addCommand(createTestCommand(runtime));
   program.addCommand(createUndoCommand(runtime));
