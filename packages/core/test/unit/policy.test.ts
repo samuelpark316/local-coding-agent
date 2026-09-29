@@ -138,8 +138,10 @@ describe('Policy', () => {
     };
 
     expect(isCommandAllowed('npm test', policy)).toBe(true);
-    expect(isCommandAllowed('vitest run', policy)).toBe(true);
+    expect(isCommandAllowed('vitest run', policy)).toBe(false);
+    expect(isCommandAllowed('vitest', policy)).toBe(true);
     expect(isCommandAllowed('npm run build', policy)).toBe(false);
+    expect(isCommandAllowed('npm test && echo unsafe', policy)).toBe(false);
     expect(isCommandAllowed('pytest', DEFAULT_POLICY)).toBe(false);
   });
 

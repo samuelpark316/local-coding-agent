@@ -108,6 +108,72 @@ describe('OllamaAdapter', () => {
     await expect(adapter.complete('hello')).rejects.toThrow('ollama pull missing-model');
   });
 
+  it('passes provider-neutral JSON Schema output to Ollama format', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ message: { content: '{"ok":true}' } }), { status: 200 })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const adapter = new OllamaAdapter({
+      baseUrl: 'http://ollama.local',
+      model: 'qwen2.5-coder:14b',
+      maxRetries: 0,
+    });
+    const schema = {
+      type: 'object',
+      properties: { ok: { type: 'boolean' } },
+      required: ['ok'],
+    };
+    await adapter.complete('json', { structuredOutput: { schema } });
+    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    expect(body.format).toEqual(schema);
+  });
+
+  it('falls back to prompt-only JSON when an older server rejects format', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'unknown field format' }), { status: 400 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: { content: '{"ok":true}' } }), { status: 200 })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const adapter = new OllamaAdapter({
+      baseUrl: 'http://ollama.local',
+      model: 'qwen2.5-coder:14b',
+      maxRetries: 0,
+    });
+    await adapter.complete('json', {
+      structuredOutput: { schema: { type: 'object' }, fallbackToPrompt: true },
+    });
+    const fallbackBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
+    expect(fallbackBody.format).toBeUndefined();
+  });
+
+  it('uses the same structured-output fallback for streaming', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'unknown field format' }), { status: 400 })
+      )
+      .mockResolvedValueOnce(new Response('{"message":{"content":"ok"}}\n', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const adapter = new OllamaAdapter({
+      baseUrl: 'http://ollama.local',
+      model: 'qwen2.5-coder:14b',
+      maxRetries: 0,
+    });
+    const chunks: string[] = [];
+    for await (const chunk of adapter.stream('json', {
+      structuredOutput: { schema: { type: 'object' }, fallbackToPrompt: true },
+    }))
+      chunks.push(chunk);
+    expect(chunks).toEqual(['ok']);
+    const fallbackBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
+    expect(fallbackBody.format).toBeUndefined();
+  });
+
   it.skipIf(process.env.OLLAMA_TESTS !== '1')(
     'can hit a local Ollama server when OLLAMA_TESTS=1',
     async () => {

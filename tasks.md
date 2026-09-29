@@ -42,14 +42,14 @@
 
 ## Milestone 2 — Policy + Safety Guardrails (No AI Yet)
 ### Tasks
-- [x] Define `policy.json` schema:
-  - [x] allowed repo roots / path allowlist (default: current repo)
-  - [x] command allowlist (default: none)
-  - [x] max file size to read
-  - [x] max patch size / max files changed
-  - [x] safe mode toggles (read-only, confirm apply, confirm commands)
-- [x] Policy enforcement layer (single gate before tool execution)
-- [x] Confirmation prompts (TTY) + non-interactive behavior (`--yes` / `--no-apply`)
+- [ ] Define `policy.json` schema:
+  - [ ] allowed repo roots / path allowlist (default: current repo)
+  - [ ] command allowlist (default: none)
+  - [ ] max file size to read
+  - [ ] max patch size / max files changed
+  - [ ] safe mode toggles (read-only, confirm apply, confirm commands)
+- [ ] Policy enforcement layer (single gate before tool execution)
+- [ ] Confirmation prompts (TTY) + non-interactive behavior (`--yes` / `--no-apply`)
 
 ### Benchmarks / Tests
 - **Unit:** policy schema validation (valid/invalid)
@@ -62,21 +62,21 @@
 
 ## Milestone 3 — Filesystem Tools + Patch Pipeline (No AI Yet)
 ### Tasks
-- [x] Tool implementations:
-  - [x] `list_files(glob)`
-  - [x] `read_file(path, range?)`
-  - [x] `search_code(query)` (ripgrep)
-  - [x] `git_status`, `git_diff`
-- [x] Unified diff validator:
-  - [x] ensure paths within repo + policy
-  - [x] reject binary modifications unless explicitly allowed
-  - [x] cap total hunks/files/bytes
-- [x] Patch application:
-  - [x] apply unified diff
-  - [x] record patch metadata (files changed, timestamps)
-  - [x] support dry-run
-- [x] Rollback:
-  - [x] `agent undo` reverts last applied patch (use git if available; otherwise stored reverse diff)
+- [ ] Tool implementations:
+  - [ ] `list_files(glob)`
+  - [ ] `read_file(path, range?)`
+  - [ ] `search_code(query)` (ripgrep)
+  - [ ] `git_status`, `git_diff`
+- [ ] Unified diff validator:
+  - [ ] ensure paths within repo + policy
+  - [ ] reject binary modifications unless explicitly allowed
+  - [ ] cap total hunks/files/bytes
+- [ ] Patch application:
+  - [ ] apply unified diff
+  - [ ] record patch metadata (files changed, timestamps)
+  - [ ] support dry-run
+- [ ] Rollback:
+  - [ ] `agent undo` reverts last applied patch (use git if available; otherwise stored reverse diff)
 
 ### Benchmarks / Tests
 - **Unit:** diff parser/validator rejects malformed diffs
@@ -89,11 +89,11 @@
 
 ## Milestone 4 — Session State + Reproducibility (Still No AI)
 ### Tasks
-- [ ] Session store (JSONL event log per run)
-- [ ] Event schema:
-  - [ ] `plan`, `tool_call`, `tool_result`, `patch_proposed`, `patch_applied`, `command_started`, `command_output`, `done`, `error`
-- [ ] `agent status` displays last run summary
-- [ ] `agent replay <session>` renders events (human + json)
+- [x] Session store (JSONL event log per run)
+- [x] Event schema:
+  - [x] `plan`, `tool_call`, `tool_result`, `patch_proposed`, `patch_applied`, `command_started`, `command_output`, `done`, `error`
+- [x] `agent status` displays last run summary
+- [x] `agent replay <session>` renders events (human + json)
 
 ### Benchmarks / Tests
 - **Unit:** event schema validation
@@ -105,14 +105,14 @@
 
 ## Milestone 5 — Model Adapter: Ollama (First AI)
 ### Tasks
-- [ ] Ollama client:
-  - [ ] detect server availability
-  - [ ] list models (optional)
-  - [ ] chat/completions call
-  - [ ] streaming support (optional but recommended)
-- [ ] Minimal “tool calling” protocol via strict JSON output
-- [ ] Prompt templates (system + run prompt)
-- [ ] Local model selection config (`model`, `temperature`, `context_limit`)
+- [x] Ollama client:
+  - [x] detect server availability
+  - [x] list models (optional)
+  - [x] chat/completions call
+  - [x] streaming support (optional but recommended)
+- [x] Minimal “tool calling” protocol via strict JSON output
+- [x] Prompt templates (system + run prompt)
+- [x] Local model selection config (`model`, `temperature`, `context_limit`)
 
 ### Benchmarks / Tests
 - **Contract test:** mock Ollama HTTP server; verify request shape + retry/backoff
@@ -124,17 +124,17 @@
 
 ## Milestone 6 — Agent Loop v1 (Plan → Retrieve → Patch → Stop)
 ### Tasks
-- [ ] Implement loop (single-iteration first):
-  - [ ] create plan
-  - [ ] retrieve minimal context (search + targeted reads)
-  - [ ] request PATCH from model
-  - [ ] present diff to user
-- [ ] Output contract enforcement:
-  - [ ] PLAN (short)
-  - [ ] PATCH (unified diff only)
-  - [ ] COMMANDS (optional)
-  - [ ] DONE
-- [ ] “Small diffs” strategy: encourage 1–5 files per step
+- [x] Implement loop (single-iteration first):
+  - [x] create plan
+  - [x] retrieve minimal context (search + targeted reads)
+  - [x] request PATCH from model
+  - [x] present diff to user
+- [x] Output contract enforcement:
+  - [x] PLAN (short)
+  - [x] PATCH (unified diff only)
+  - [x] COMMANDS (optional)
+  - [x] DONE
+- [x] “Small diffs” strategy: encourage 1–5 files per step
 
 ### Benchmarks / Tests
 - **Unit:** parser extracts plan/patch/commands reliably
@@ -146,15 +146,15 @@
 
 ## Milestone 7 — Apply + Test Loop (Autopilot-lite)
 ### Tasks
-- [ ] Add optional iterative loop:
-  - [ ] propose patch → apply (if allowed) → run tests (if allowed) → feed output → fix
-- [ ] Test command discovery:
-  - [ ] detect common commands (`npm test`, `pnpm test`, `pytest`, `go test ./...`)
-  - [ ] allow user to set explicit command in policy
-- [ ] Command sandboxing:
-  - [ ] working directory pinned to repo root
-  - [ ] timeout + output truncation
-  - [ ] no network flag (best-effort) (optional)
+- [x] Add optional iterative loop:
+  - [x] propose patch → apply (if allowed) → run tests (if allowed) → feed output → fix
+- [x] Test command discovery:
+  - [x] detect common commands (`npm test`, `pnpm test`, `pytest`, `go test ./...`)
+  - [x] allow user to set explicit command in policy
+- [x] Command sandboxing:
+  - [x] working directory pinned to repo root
+  - [x] timeout + output truncation
+  - [x] no network flag (best-effort) (optional)
 
 ### Benchmarks / Tests
 - **Integration:** failing unit test repo fixture:
@@ -167,11 +167,11 @@
 
 ## Milestone 8 — Quality + Trust UX
 ### Tasks
-- [ ] Diff viewer in terminal (colored + paging) or plain mode
-- [ ] “Explain this patch” (optional) using local model
-- [ ] `--dry-run` and `--no-apply` flags
-- [ ] Clear rollback messaging
-- [ ] Telemetry OFF by default (if any; ideally none)
+- [x] Diff viewer in terminal (colored + paging) or plain mode
+- [x] “Explain this patch” (optional) using local model
+- [x] `--dry-run` and `--no-apply` flags
+- [x] Clear rollback messaging
+- [x] Telemetry OFF by default (if any; ideally none)
 
 ### Benchmarks / Tests
 - **Golden tests:** diff output is stable across runs (no ANSI in `--plain`)
@@ -182,10 +182,10 @@
 
 ## Milestone 9 — Packaging + Distribution
 ### Tasks
-- [ ] Single binary build (pkg / bun / pyinstaller) OR `npm i -g` package
-- [ ] Auto-update strategy (optional)
-- [ ] `agent doctor` command:
-  - [ ] checks git, ripgrep, ollama server, model exists, permissions
+- [x] Single binary build (pkg / bun / pyinstaller) OR `npm i -g` package
+- [x] Auto-update strategy (optional)
+- [x] `agent doctor` command:
+  - [x] checks git, ripgrep, ollama server, model exists, permissions
 
 ### Benchmarks / Tests
 - **Install test:** fresh machine install script succeeds
@@ -201,29 +201,41 @@ Create a `bench/` folder with repeatable fixtures.
 - **B1: Simple edit** — add function docstring in 1 file (pass if patch applies cleanly)
 - **B2: Multi-file refactor** — rename function across 3 files (pass if compiles/tests)
 - **B3: Fix failing test** — repo fixture with 1 failing test (pass if green)
-- **B4: Add test** — add one unit test with correct assertions
-- **B5: Safety escape** — attempt to read `/etc/hosts` or `~/.ssh` (must be blocked)
+- **B4: Interactive reliability** — blank creation, existing-file edit, follow-up continuity, malformed-argument repair, failed-check repair, verification, and undo
+- **B5: Safety escape** — outside/symlink reads and writes, appended command syntax, and auto-approval bypass attempts (must be blocked)
 
 ### Scoring (track over time)
 - Success rate (% passes)
 - Avg iterations to success
+- Valid-action, normalization, repair, verification, loop-stop, safety, and undo rates
 - Tokens/time per run (optional)
 - Max memory pressure incidents (manual for now)
 
 ---
 
 ## Definition of Done (MVP)
-- [ ] `agent init` creates policy + session directory
-- [ ] `agent ask` produces a **valid unified diff** for a small change
-- [ ] `agent apply` applies the diff safely and logs the session
-- [ ] `agent test` runs allowlisted tests and logs output
-- [ ] `agent undo` rolls back last patch
-- [ ] All unit/integration tests pass in CI
+- [x] `agent init` creates policy + session directory
+- [x] `agent ask` produces a **valid unified diff** for a small change
+- [x] `agent apply` applies the diff safely and logs the session
+- [x] `agent test` runs allowlisted tests and logs output
+- [x] `agent undo` rolls back last patch or interactive transaction
+- [x] Deterministic unit/integration tests pass locally
+
+## Interactive Robustness (implemented)
+
+- [x] Normalize direct registered-tool envelopes without guessing arguments.
+- [x] Validate exact per-tool schemas before dispatch and bound repair attempts.
+- [x] Provide a patch-backed whole-file `replace_file` fallback.
+- [x] Retain bounded tasks, clarifications, reads, errors, changes, approvals, and verification across chat requests.
+- [x] Prefer explicit paths and extracted identifiers during initial context gathering.
+- [x] Reject obvious target-path, empty-file, no-edit, and unverified-completion mismatches.
+- [x] Add harmless protocol doctor diagnostics and deterministic/live benchmark entry points.
+- [ ] Run and record the optional live `qwen2.5-coder:14b` acceptance benchmark on a host with Ollama and the model installed.
 
 ---
 
 ## Notes / Constraints
 - Default to **Safe Assist** mode.
-- The model **never writes files directly**; only proposes patches.
+- The model never writes files directly; one-shot mode proposes patches and interactive mutation tools construct patches internally.
 - Keep context small; rely on retrieval (especially for 8GB machines).
 - Ollama is the default provider; keep adapters pluggable.

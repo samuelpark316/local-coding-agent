@@ -82,6 +82,32 @@ describe('AgentRunner', () => {
     ).rejects.toThrow('leading prose');
   });
 
+  it('preserves raw model output on parse/contract failures for diagnostics', async () => {
+    const badOutput = JSON.stringify({
+      plan: 'Update README',
+      patch: ['prose', '--- a/README.md', '+++ b/README.md'].join('\n'),
+      commands: [],
+      done: true,
+      tool_calls: [],
+    });
+    const runner = new AgentRunner({
+      llm: createDeterministicLlm(badOutput),
+      contextGatherer: async () => FIXTURE_CONTEXT,
+    });
+
+    try {
+      await runner.run({
+        task: 'update readme',
+        repoRoot: '/tmp/repo',
+      });
+      throw new Error('Expected runner to fail.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      const candidate = error as Error & { rawModelOutput?: string };
+      expect(candidate.rawModelOutput).toBe(badOutput);
+    }
+  });
+
   it('is deterministic for identical prompt and context inputs', async () => {
     const llm = createDeterministicLlm(
       JSON.stringify({

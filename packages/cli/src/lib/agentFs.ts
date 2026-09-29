@@ -6,6 +6,7 @@ import {
   DEFAULT_POLICY,
   type PatchApplicationMetadata,
   SessionStore,
+  TransactionStore,
 } from '@local-agent/core';
 
 const AGENT_DIRNAME = '.agent';
@@ -14,6 +15,7 @@ const MODEL_FILENAME = 'model.json';
 const STATE_FILENAME = 'state.json';
 const SESSIONS_DIRNAME = 'sessions';
 const PATCHES_DIRNAME = 'patches';
+const TRANSACTIONS_DIRNAME = 'transactions';
 const LAST_PATCH_FILENAME = 'last-proposed.patch';
 const LAST_APPLIED_PATCH_FILENAME = 'last-applied.patch';
 const LAST_APPLIED_REVERSE_PATCH_FILENAME = 'last-applied.reverse.patch';
@@ -36,6 +38,7 @@ export interface AgentPaths {
   modelPath: string;
   sessionsDir: string;
   patchesDir: string;
+  transactionsDir: string;
   statePath: string;
   lastPatchPath: string;
   lastAppliedPatchPath: string;
@@ -51,8 +54,14 @@ export interface AgentStatus {
   modelExists: boolean;
   sessionsDirExists: boolean;
   patchesDirExists: boolean;
+  transactionsDirExists: boolean;
   pendingPatch: string | null;
   lastAppliedPatch: string | null;
+  lastTransaction: {
+    id: string;
+    status: 'active' | 'completed' | 'incomplete' | 'reverted';
+    changedFiles: string[];
+  } | null;
   lastSession: {
     sessionId: string;
     command: string;
@@ -110,6 +119,7 @@ export function getAgentPaths(repoRoot: string): AgentPaths {
     modelPath: path.join(agentDir, MODEL_FILENAME),
     sessionsDir: path.join(agentDir, SESSIONS_DIRNAME),
     patchesDir: path.join(agentDir, PATCHES_DIRNAME),
+    transactionsDir: path.join(agentDir, TRANSACTIONS_DIRNAME),
     statePath: path.join(agentDir, STATE_FILENAME),
     lastPatchPath: path.join(repoRoot, AGENT_DIRNAME, PATCHES_DIRNAME, LAST_PATCH_FILENAME),
     lastAppliedPatchPath: path.join(
@@ -139,6 +149,7 @@ export async function initializeAgent(repoRoot: string): Promise<AgentPaths> {
   await mkdir(paths.agentDir, { recursive: true });
   await mkdir(paths.sessionsDir, { recursive: true });
   await mkdir(paths.patchesDir, { recursive: true });
+  await mkdir(paths.transactionsDir, { recursive: true });
 
   if (!existsSync(paths.policyPath)) {
     const policy = {
@@ -268,6 +279,9 @@ export async function getAgentStatus(
   const latestSessionMetadata = sessions.find(
     (session) => session.sessionId !== options.excludeSessionId
   );
+  const latestTransaction = initialized
+    ? await new TransactionStore(paths.transactionsDir, repoRoot).latest()
+    : null;
 
   return {
     repoRoot,
@@ -277,6 +291,7 @@ export async function getAgentStatus(
     modelExists: existsSync(paths.modelPath),
     sessionsDirExists: existsSync(paths.sessionsDir),
     patchesDirExists: existsSync(paths.patchesDir),
+    transactionsDirExists: existsSync(paths.transactionsDir),
     pendingPatch:
       state.lastProposedPatchPath && existsSync(state.lastProposedPatchPath)
         ? state.lastProposedPatchPath
@@ -285,6 +300,13 @@ export async function getAgentStatus(
       state.lastAppliedPatchPath && existsSync(state.lastAppliedPatchPath)
         ? state.lastAppliedPatchPath
         : null,
+    lastTransaction: latestTransaction
+      ? {
+          id: latestTransaction.id,
+          status: latestTransaction.status,
+          changedFiles: [...new Set(latestTransaction.edits.flatMap((edit) => edit.filesChanged))],
+        }
+      : null,
     lastSession: latestSessionMetadata
       ? {
           sessionId: latestSessionMetadata.sessionId,

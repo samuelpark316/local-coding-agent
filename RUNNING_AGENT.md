@@ -86,7 +86,33 @@ npm run dev -- status
 npm run dev -- undo
 ```
 
-## 8. Optional: build installable packages
+## 8. Interactive coding session
+
+```bash
+npm run dev -- chat
+```
+
+Useful options:
+
+```bash
+npm run dev -- chat --plain
+npm run dev -- chat --stream
+npm run dev -- chat --max-steps 20
+npm run dev -- chat --auto-approve
+```
+
+Chat commands:
+
+- `/help` shows available session commands.
+- `/status` shows the latest edit transaction.
+- `/changes` lists files changed by the previous request.
+- `/undo` reverts the latest interactive transaction.
+- `/clear` clears the in-memory working summary but keeps logs.
+- `/exit` ends the session.
+
+`--auto-approve` only skips confirmation prompts. Repository path restrictions, read-only policy, patch limits, and command allowlists still apply.
+
+## 9. Optional: build installable packages
 
 Create package tarballs:
 
@@ -105,9 +131,31 @@ Then run:
 ```bash
 agent --help
 agent doctor
+agent doctor --protocol
 ```
 
-## 9. Common issues
+`--protocol` asks the configured model for one harmless completion action, validates it, and executes no tool.
+
+### Use the development CLI with a separate target repository
+
+Do not run the workspace-scoped package script from `packages/cli`; that makes the package directory look like the target repository. Build the CLI, change into the target, and invoke the built entry point by absolute path:
+
+```bash
+cd /path/to/local-coding-agent
+npm run build
+cd /path/to/target-repository
+node /path/to/local-coding-agent/packages/cli/dist/main.js init
+node /path/to/local-coding-agent/packages/cli/dist/main.js chat
+```
+
+After changing a globally installed build, recreate the tarballs and reinstall both packages:
+
+```bash
+npm_config_cache=/tmp/local-agent-npm-cache npm run package:all
+npm install -g ./dist-packages/local-agent-core-0.1.0.tgz ./dist-packages/local-agent-cli-0.1.0.tgz
+```
+
+## 10. Common issues
 
 ### `agent doctor` fails with Ollama unavailable
 

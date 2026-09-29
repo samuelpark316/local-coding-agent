@@ -87,8 +87,18 @@ export class AgentRunner {
       systemPrompt: input.llmOptions?.systemPrompt ?? getSystemPrompt(),
     });
 
-    const output = parseAgentOutput(completion.content);
-    validatePatchOutputContract(output.patch);
+    const rawModelOutput = completion.content;
+    let output: AgentOutput;
+    try {
+      output = parseAgentOutput(rawModelOutput);
+      validatePatchOutputContract(output.patch);
+    } catch (error) {
+      const parseError = new Error(
+        error instanceof Error ? error.message : 'Failed to parse model output.'
+      ) as Error & { rawModelOutput?: string };
+      parseError.rawModelOutput = rawModelOutput;
+      throw parseError;
+    }
 
     await this.emit('plan', {
       summary: output.plan,
@@ -106,7 +116,7 @@ export class AgentRunner {
     return {
       output,
       prompt,
-      rawModelOutput: completion.content,
+      rawModelOutput,
       context,
       proposedPatchFileCount,
     };

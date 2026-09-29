@@ -144,12 +144,7 @@ export function isCommandAllowed(command: string, policy: Policy): boolean {
     return false;
   }
 
-  const executable = trimmedCommand.split(/\s+/, 1)[0];
-
-  return policy.commandAllowlist.some((allowedCommand) => {
-    const trimmedAllowedCommand = allowedCommand.trim();
-    return trimmedAllowedCommand === executable || trimmedAllowedCommand === trimmedCommand;
-  });
+  return policy.commandAllowlist.some((allowedCommand) => allowedCommand.trim() === trimmedCommand);
 }
 
 export type PolicyOperation =

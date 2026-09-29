@@ -56,11 +56,23 @@ export class OllamaAdapter implements LLM {
   }
 
   async complete(prompt: string, options?: LLMOptions): Promise<LLMResponse> {
-    const response = await this.requestWithRetry<OllamaChatResponse>('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify(this.buildChatBody(prompt, false, options)),
-      headers: { 'content-type': 'application/json' },
-    });
+    let response: OllamaChatResponse;
+    try {
+      response = await this.requestWithRetry<OllamaChatResponse>('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(this.buildChatBody(prompt, false, options)),
+        headers: { 'content-type': 'application/json' },
+      });
+    } catch (error) {
+      if (!options?.structuredOutput?.fallbackToPrompt) throw error;
+      response = await this.requestWithRetry<OllamaChatResponse>('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(
+          this.buildChatBody(prompt, false, { ...options, structuredOutput: undefined })
+        ),
+        headers: { 'content-type': 'application/json' },
+      });
+    }
 
     const content = response.message?.content;
     if (typeof content !== 'string') {
@@ -74,11 +86,23 @@ export class OllamaAdapter implements LLM {
   }
 
   async *stream(prompt: string, options?: LLMOptions): AsyncIterable<string> {
-    const response = await this.fetchWithRetry('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify(this.buildChatBody(prompt, true, options)),
-      headers: { 'content-type': 'application/json' },
-    });
+    let response: Response;
+    try {
+      response = await this.fetchWithRetry('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(this.buildChatBody(prompt, true, options)),
+        headers: { 'content-type': 'application/json' },
+      });
+    } catch (error) {
+      if (!options?.structuredOutput?.fallbackToPrompt) throw error;
+      response = await this.fetchWithRetry('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(
+          this.buildChatBody(prompt, true, { ...options, structuredOutput: undefined })
+        ),
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     const reader = response.body?.getReader();
     if (!reader) {
       throw new Error('Ollama streaming response body was empty.');
@@ -108,6 +132,15 @@ export class OllamaAdapter implements LLM {
         if (typeof content === 'string' && content.length > 0) {
           yield content;
         }
+      }
+    }
+
+    const trailing = buffered.trim();
+    if (trailing.length > 0) {
+      const parsed = JSON.parse(trailing) as OllamaChatResponse;
+      const content = parsed.message?.content;
+      if (typeof content === 'string' && content.length > 0) {
+        yield content;
       }
     }
   }
@@ -146,7 +179,7 @@ export class OllamaAdapter implements LLM {
       content: prompt,
     });
 
-    return {
+    const body: Record<string, unknown> = {
       model: this.config.model,
       stream,
       messages,
@@ -157,6 +190,8 @@ export class OllamaAdapter implements LLM {
         stop: options?.stop,
       },
     };
+    if (options?.structuredOutput) body.format = options.structuredOutput.schema;
+    return body;
   }
 
   private async requestWithRetry<T>(requestPath: string, init?: RequestInit): Promise<T> {

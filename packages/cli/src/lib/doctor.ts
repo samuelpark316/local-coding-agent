@@ -4,7 +4,12 @@ import { access } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { DEFAULT_MODEL_CONFIG, type ModelConfig, OllamaAdapter } from '@local-agent/core';
+import {
+  DEFAULT_MODEL_CONFIG,
+  type ModelConfig,
+  OllamaAdapter,
+  parseAgentAction,
+} from '@local-agent/core';
 import type { AgentPaths } from './agentFs.js';
 import { getAgentPaths, resolveRepoRoot } from './agentFs.js';
 import { loadModelConfig } from './model.js';
@@ -40,7 +45,13 @@ export interface DoctorDependencies {
   resolveRepoRoot: (startPath: string) => string | null;
   getAgentPaths: (repoRoot: string) => DoctorAgentPaths;
   loadModelConfig: (repoRoot: string) => Promise<ModelConfig>;
-  createAdapter: (config: ModelConfig) => Pick<OllamaAdapter, 'checkServer' | 'listModels'>;
+  createAdapter: (
+    config: ModelConfig
+  ) => Pick<OllamaAdapter, 'checkServer' | 'listModels'> & Partial<Pick<OllamaAdapter, 'complete'>>;
+}
+
+export interface DoctorOptions {
+  protocol?: boolean;
 }
 
 const defaultDependencies: DoctorDependencies = {
@@ -164,7 +175,8 @@ async function checkWriteAccess(
 
 export async function runDoctorChecks(
   cwd: string,
-  overrides: Partial<DoctorDependencies> = {}
+  overrides: Partial<DoctorDependencies> = {},
+  options: DoctorOptions = {}
 ): Promise<DoctorReport> {
   const dependencies: DoctorDependencies = {
     ...defaultDependencies,
@@ -260,6 +272,48 @@ export async function runDoctorChecks(
           required: true,
           message: `Model "${modelConfig.model}" is installed.`,
         });
+        if (options.protocol) {
+          try {
+            if (!adapter.complete) throw new Error('Adapter does not support protocol completion.');
+            const response = await adapter.complete(
+              'Return exactly this harmless JSON completion action: {"type":"complete","summary":"Protocol check passed","noChangeReason":"Diagnostic only"}',
+              {
+                temperature: 0,
+                structuredOutput: {
+                  fallbackToPrompt: true,
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      type: { const: 'complete' },
+                      summary: { type: 'string' },
+                      noChangeReason: { type: 'string' },
+                    },
+                    required: ['type', 'summary'],
+                    additionalProperties: false,
+                  },
+                },
+              }
+            );
+            const action = parseAgentAction(response.content, { knownTools: [] });
+            if (action.type !== 'complete')
+              throw new Error('Model did not return a completion action.');
+            checks.push({
+              id: 'model_protocol',
+              label: 'model action protocol',
+              status: 'pass',
+              required: false,
+              message: 'Configured model returned a valid harmless action; nothing was executed.',
+            });
+          } catch (error) {
+            checks.push({
+              id: 'model_protocol',
+              label: 'model action protocol',
+              status: 'warn',
+              required: false,
+              message: `Model is installed but did not follow the action protocol: ${error instanceof Error ? error.message : 'invalid response'}`,
+            });
+          }
+        }
       } else {
         checks.push({
           id: 'ollama_model',

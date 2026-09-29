@@ -7,6 +7,20 @@
  */
 
 export type EventType =
+  | 'request_started'
+  | 'model_started'
+  | 'model_output'
+  | 'action_normalized'
+  | 'repair_started'
+  | 'repair_succeeded'
+  | 'repair_failed'
+  | 'loop_stopped'
+  | 'policy_decision'
+  | 'approval_requested'
+  | 'approval_resolved'
+  | 'context_compacted'
+  | 'request_completed'
+  | 'request_stopped'
   | 'plan'
   | 'tool_call'
   | 'tool_result'
@@ -68,7 +82,43 @@ export interface ErrorEventData {
   details?: unknown;
 }
 
+export interface RuntimeLifecycleEventData {
+  requestId?: string;
+  task?: string;
+  step?: number;
+  actionType?: string;
+  summary?: string;
+  stopReason?: string;
+  steps?: number;
+  remainingMessages?: number;
+  tool?: string;
+  allowed?: boolean;
+  reasons?: string[];
+  risk?: string;
+  decision?: string;
+  attempt?: number;
+  attempts?: number;
+  error?: string;
+  actions?: string[];
+  normalizedOutput?: string;
+  continuation?: boolean;
+}
+
 export interface EventDataMap {
+  request_started: RuntimeLifecycleEventData;
+  model_started: RuntimeLifecycleEventData;
+  model_output: RuntimeLifecycleEventData;
+  action_normalized: RuntimeLifecycleEventData;
+  repair_started: RuntimeLifecycleEventData;
+  repair_succeeded: RuntimeLifecycleEventData;
+  repair_failed: RuntimeLifecycleEventData;
+  loop_stopped: RuntimeLifecycleEventData;
+  policy_decision: RuntimeLifecycleEventData;
+  approval_requested: RuntimeLifecycleEventData;
+  approval_resolved: RuntimeLifecycleEventData;
+  context_compacted: RuntimeLifecycleEventData;
+  request_completed: RuntimeLifecycleEventData;
+  request_stopped: RuntimeLifecycleEventData;
   plan: PlanEventData;
   tool_call: ToolCallEventData;
   tool_result: ToolResultEventData;
